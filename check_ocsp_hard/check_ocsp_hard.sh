@@ -211,7 +211,7 @@ if [ ! -f "$ISSUER" ]; then
 fi
 
 # If no URL provided from command line, generate a sensible one from hostname and port
-# TODO do not output $OCSPURL as it might not match the one provided with $OPENSSL_ALT_OPTIONS.
+# TODO do not output $OCSPURL as it might be incorrect when $OPENSSL_ALT_OPTIONS is provided.
 if [ -z "$OCSPURL" ]; then
     OCSPURL="http://$HOSTNAME:$PORT"
 fi
