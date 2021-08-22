@@ -12,3 +12,7 @@ This is a repo with my nagios plugins.
 - AXFR-to-nagios - Simple script which converts a DIG zonetransfer to a nagios HTTP check config file
 - check_updates - simple checks for apt, yum and pacman updates.
 - output_utils - Just some utilities to manipulate plugins output. TODO evaluate to take this out to another project.
+
+## TODOS
+
+- Evaluate to make pull requests against the original repository.
