@@ -1,0 +1,180 @@
+#!/bin/sh
+#
+# This file is provided as part of the SafeNet Protect Toolkit
+#
+# (c) Copyright 2001-2014 SafeNet, Inc. All rights reserved.
+# This file is protected by laws protecting trade secrets and confidential
+# information, as well as copyright laws and international treaties.
+#
+# Filename: ctalarm
+#$Date: 2014/08/11 12:56:46GMT-05:00 $
+
+
+# This script is provided for illustrative purposes only, to assist in using
+# the output from ctcheck with a third party monitoring framework.
+
+# Sample program to print alarms, warnings & notices in response to ctcheck
+# output should be run something like:   ctcheck -a | alarm
+
+# This reads the names and field ordering from the comment lines and then
+# checks any values received.
+
+# This program needs customising for site-specific limits - see the comments
+# below
+
+# define a list of awks to try in preferred order
+awklist="gawk /bin/gawk /usr/bin/gawk /usr/local/bin/gawk nawk /bin/nawk 
+         /usr/bin/nawk /usr/local/bin/nawk awk /bin/awk /usr/bin/awk 
+         /usr/local/bin/awk"
+
+# find the most preferred version of awk
+if [ X"$NAWK" = X ]; then
+ for awk in $awklist; do
+  result=`$awk 'BEGIN {print "AWK"}' 2>/dev/null`
+  [ X"$result" = X"AWK" ] && break;
+ done
+ NAWK=$awk
+fi
+
+# pass any additional arguments to awk here
+$NAWK '
+
+BEGIN {
+	FS="~";
+	alarms = 0;
+	warnings = 0;
+	notices = 0;
+	glob_ident = "^# global info: ";
+	global_names_read = 0;
+	dev_names_read = 0;
+	dev_ident = "^# device info: ";
+}
+
+function raise_alarm(arg, value, serialno) {
+	printf("ALARM - %s = %s (Device Serial # %s)\n", arg, value, serialno) ;
+	alarms++;
+}
+
+function raise_warning(arg, value, serialno) {
+	printf("WARNING - %s = %s (Device Serial # %s)\n", arg, value, serialno);
+	warnings++;
+}
+
+function raise_notice(arg, value, serialno) {
+	printf("NOTICE - %s = %s (Device Serial # %s)\n", arg, value, serialno);
+	notices++;
+}
+
+# read in the parameters names in the globals line:
+$0 ~ glob_ident {
+	#print "processing global names line" $0
+	$0 = substr($0,length(glob_ident));
+	i = 1;
+	while (i < NF) {
+		global_name[i] = $(i);
+		i++;
+	}
+	global_names_read = 1;
+	next; # forget $0 now - otherwise it gets processed as a non-comment line
+}
+
+# read in the parameter names in the device line:
+$0 ~ dev_ident {
+	#print "processing dev names line" $0
+	$0 = substr($0,length(dev_ident));
+	i = 1;
+	while (i < NF) {
+		dev_name[i] = $(i);
+		i++;
+	}
+	dev_names_read = 1;
+	next; # forget $0 now - otherwise it gets processed as a non-comment line
+}
+
+#For non-comment lines:
+$0 !~ /^#/ {
+
+	if (global_names_read && !dev_names_read) {
+		# first non-comment line is the global parameter line (if present):
+		#print "processing globals line" $0
+		for (i = 1; i < NF; i++) {
+			name = global_name[i];
+			value = $i;
+			#print "global " global_name[i] " : " $i
+
+# CUSTOMISE FOR YOUR OWN NEEDS HERE:
+			if (name == "devicecount") {
+				if (value < 1) {
+					raise_alarm("DEVICECOUNT", value, "global");
+				}
+			} 
+
+			if (name == "totalsessioncount") {
+				if (value > 20 && value < 60) {
+					raise_warning("TOTAL SESSION COUNT", value, "global");
+				} else if (value >= 60) {
+					raise_alarm("TOTAL SESSION COUNT", value, "global");
+				}
+			}
+# END OF CUSTOMISATION
+		}
+	} else {
+		#print "processing dev line" $0
+		if (!dev_names_read) {
+			print "Input error";
+			exit 4;
+		}
+
+		# All other non-comment lines are device lines:
+		# get the serial number if possible:
+		for (i = 1; i < NF; i++) {
+			name = dev_name[i];
+			value = $i;
+			if (name == "serialnumber") {
+				serialnumber = value;
+				break;
+			}
+		}
+
+# Now check each parameter of interest:
+		for (i = 1; i < NF; i++) {
+			name = dev_name[i];
+			value = $i;
+			#print "dev " serialnumber " " dev_name[i] " : " $i
+
+# CUSTOMISE FOR YOUR OWN NEEDS HERE:
+			if (name == "batterystatus") {
+				if (value != "GOOD") {
+					raise_warning("BATTERY", value, serialnumber);
+				} 
+			} 
+
+			if (name == "deviceinitialised") {
+				if (value != "TRUE") {
+					raise_alarm("TAMPERED", value, serialnumber);
+				}
+			}
+# END OF CUSTOMISATION
+		}
+	}
+}
+
+END {
+	if (!dev_names_read) {
+		raise_alarm("CRYPTOKI ERROR", "", "global");
+	}
+	if (alarms) {
+		exit_code = 3;
+	} else if (warnings) {
+		exit_code = 2;
+	} else if (notices) {
+		exit_code = 1;
+	} else {
+		print "OK";
+		exit_code = 0;
+	}
+
+	exit exit_code;
+}
+
+'
