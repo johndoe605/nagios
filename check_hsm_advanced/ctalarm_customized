@@ -110,7 +110,7 @@ $0 !~ /^#/ {
 			} 
 
 			if (name == "totalsessioncount") {
-				if (value > 20 && value < 60) {
+				if (value > 40 && value < 60) {
 					raise_warning("TOTAL SESSION COUNT", value, "global");
 				} else if (value >= 60) {
 					raise_alarm("TOTAL SESSION COUNT", value, "global");

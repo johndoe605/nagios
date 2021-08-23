@@ -2,7 +2,7 @@
 
 # TODO make these overridable from arguments. See hsm.sh.
 CTC="/opt/safenet/protecttoolkit5/ptk/bin/ctcheck"
-CTA="/opt/safenet/protecttoolkit5/ptk/bin/ctalarm"
+CTA="/opt/misc/hablutzel1_nagios_plugins/check_hsm_advanced/ctalarm_customized"
 
 hsm_hostname=${1}
 export ET_HSM_NETCLIENT_SERVERLIST=${hsm_hostname}
