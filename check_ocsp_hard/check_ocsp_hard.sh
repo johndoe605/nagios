@@ -24,12 +24,16 @@
 # * Certificates changed
 # * Added argument -H 
 
+# TODO check: in ch1vmmon02, the following check is passing check_ocsp_signer!OISTE_WISeKey_Global_Root_GA_CA.pem!OISTE_WISeKey_Global_Root_GA_CA_OCSP_Service.pem, even when OISTE_WISeKey_Global_Root_GA_CA.pem is not trusted anymore by Debian and the produced output has "140256951723392:error:27069065:OCSP routines:OCSP_basic_verify:certificate verify error:../crypto/ocsp/ocsp_vfy.c:92:Verify error:unable to get local issuer certificate". Maybe this should fail.
+
 OK=0
 WARNING=1
 CRITICAL=2
 UNKNOWN=3
 HOSTNAME=localhost # by default check localhost
 PORT=80 # default port is 80
+WARNING_DAYS=20
+CRITICAL_DAYS=15
 
 OPENSSL="openssl" # Command used to invoke openssl
 
@@ -44,6 +48,8 @@ Usage: $0 [--help] [-H localhost] [-P 80]
           [--path-to-openssl /usr/bin/openssl]
           [--url http://\$hostname:\$port]"]
           [--openssl-alt-options "-nonce -issuer ..."]
+          [--warning 20]
+          [--critical 15]
 
 Notes:
   If --url is not specified it is assumed to be http://host_name
@@ -108,6 +114,14 @@ do
     --verbose)
       VERBOSE=yes
       shift 1
+    ;;
+    --warning)
+      WARNING_DAYS=$2
+      shift 2
+    ;;
+    --critical)
+      CRITICAL_DAYS=$2
+      shift 2
     ;;
     *)
         echo "Invalid parameter: $1"
@@ -285,15 +299,14 @@ echo "$OCSPRESPONSE" | grep -q ": good"
 if [[ $? -eq 0 ]]; then
     # TODO recognize (and provide appropriate output) when the following command fails for reasons different than expiration, e.g. when the provided certificate doesn't have the correct format.
     # TODO for the following expiration validations, for error results only output the details of the expiring certificate.
-    # TODO receive the CRITICAL and WARNING thresholds as arguments. It is currently hardcoded to 15 and 20 days respectively!.
-    if ! echo "${OCSPRESPONSE}" | openssl x509 -noout -checkend $(( 15 * 86400 )) > /dev/null ; then
-      echo -n "CRITICAL: OCSP responder certificate will expire in less than 15 days."
-      echo "$OCSPRESPONSE"
+    if ! echo "${OCSPRESPONSE}" | openssl x509 -noout -checkend $(( $CRITICAL_DAYS * 86400 )) > /dev/null ; then
+      echo -n "CRITICAL: OCSP responder certificate will expire in less than $CRITICAL_DAYS days."
+      echo " $OCSPRESPONSE"
       exit $CRITICAL
     fi
-    if ! echo "${OCSPRESPONSE}" | openssl x509 -noout -checkend $(( 20 * 86400 )) > /dev/null ; then
-      echo -n "WARNING: OCSP responder certificate will expire in less than 20 days."
-      echo "$OCSPRESPONSE"
+    if ! echo "${OCSPRESPONSE}" | openssl x509 -noout -checkend $(( $WARNING_DAYS * 86400 )) > /dev/null ; then
+      echo -n "WARNING: OCSP responder certificate will expire in less than $WARNING_DAYS days."
+      echo " $OCSPRESPONSE"
       exit $WARNING
     fi
     echo -n "OK: OCSP up and running. OCSP signer certificate not about to expire. Status of certificate for ${CERTCN} GOOD by OCSP: ${OCSPURL} "

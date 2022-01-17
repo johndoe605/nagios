@@ -134,7 +134,7 @@ def check_crl(url, warn, crit, custom_dns_server):
 def check_crl_with_overlap(url, overlap, dns_server):
     # TODO research better on the 'skew' concept and check if EJBCA supports it for CRLs. Note that we are currently hardcoding a 20%.
     # TODO check: if EJBCA supports the skew, allow to receive it as an optional parameter with a sensitive default.
-    # TODO check maybe the correct term here would be generation_tolerance_and_skew, because this time represents the skew (exists in EJBCA CRL generation?) and the time allowed for the CA to generate the CRL after the overlap starts, e.g. EJBCA service period which could be 5 minutes or so?. Maybe receive an additional optional tolerance parameter?.
+    # TODO check maybe the correct term here would be generation_tolerance_and_skew, because this time represents the skew (exists in EJBCA CRL generation?) and the time allowed for the CA to generate the CRL after the overlap starts, e.g. EJBCA service period which could be 5 minutes or so?. Maybe receive an additional optional tolerance parameter?. Consider the ClockSkewMinutes in AD CS, see https://confluence.blobfish.pe/x/-QK3B.
     # NOTE that skew (if exists in EJBCA) would be something like a fixed value, e.g. 10 mins, while 'generation_tolerance' will depend on the CA type (i.e. online or offline), in both cases 10% of the overlap by default could be ok but maybe, for example, for offline a value of several days, e.g. a week would be required and in that case that value should be received as a parameter.
     # TODO update the following logic considering the latest documentation at https://confluence.blobfish.pe/x/SIEFAg.
     skew = overlap * 20 / 100

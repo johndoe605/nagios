@@ -16,3 +16,4 @@ This is a repo with my nagios plugins.
 ## TODOS
 
 - Evaluate to make pull requests against the original repository.
+- TODO compare against the scripts that I have deployed in servers.

@@ -2,6 +2,7 @@
 #####
 # This allows to check the "Current percentage of HSM CPU capacity in use" (see too https://thalesdocs.com/gphsm/ptk/5.9/docs/Content/PTK-C_Admin/snmp.htm).
 #####
+# TODO review it, any error in this script should produce an error and exit.
 
 HSMSTATE="/opt/safenet/protecttoolkit5/ptk/bin/hsmstate"
 
