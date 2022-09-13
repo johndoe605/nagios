@@ -57,8 +57,7 @@ def check_crl(url, warn, crit, custom_dns_server):
             def MyResolver(host):
                 dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
                 dns.resolver.default_resolver.nameservers = [custom_dns_server]
-                # Using query as it has been observed that to the date (Jan 2021) the 'resolve' alternative is not present in the Ubuntu 20.04 python3-dnspython APT package.
-                answers = dns.resolver.query(host, 'A')
+                answers = dns.resolver.resolve(host)
                 # TODO manage when 'answers' is empty.
                 for rdata in answers:
                     return rdata.address
@@ -143,7 +142,7 @@ def check_crl_with_overlap(url, overlap, dns_server):
     check_crl(url, warn, crit, dns_server)
 
 def usage():
-    print ("check_crl.py -h|--help -v|--verbose -u|--url=<url> -o|--dns-server=<dnsserver> -d|--overlap -w|--warning=<minutes> -c|--critical=<minutes>")
+    print ("check_crl.py -h|--help -v|--verbose -u|--url=<url> -o|--overlap -d|--dns-server=<dnsserver> -w|--warning=<minutes> -c|--critical=<minutes>")
     print ("")
     print ("Example, if you want to get a warning if a CRL expires in 8 hours and a critical if it expires in 6 hours:")
     print ("./check_crl.py -u \"http://domain.tld/url/crl.crl\" -w 480 -c 360")
