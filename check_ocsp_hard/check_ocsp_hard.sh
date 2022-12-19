@@ -248,12 +248,12 @@ fi
 # TODO evaluate to get the binary OCSP response as the result of the following command, so it can be later used for friendly status reporting or for extracting the OCSP signer certificate for expiration validation.
 error_file=$(mktemp)
 out=$($OPENSSL_COMMAND 2>$error_file)
+RESULT=$?
 err=$(< $error_file)
 rm $error_file
 NL=$'\n'
 OCSPRESPONSE="${err}${NL}${out}"
 
-RESULT=$?
 if [[ $RESULT -ne 0 ]]; then
     if [[ "$OCSPRESPONSE" =~ "OCSP_parse_url:error parsing url" ]]; then
         echo "CRITICAL: OCSP URL parse error."
