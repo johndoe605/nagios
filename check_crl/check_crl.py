@@ -87,11 +87,11 @@ def check_crl(url, warn, crit, custom_dns_server):
             firstbyte = crlfile.read()[0]
             if firstbyte != 48: # First byte different than 0x30 (i.e. the start of DER SEQUENCE).
                 inform = 'PEM'
-        ret = subprocess.check_output(["/usr/bin/openssl", "crl", "-inform", inform, "-noout", "-nextupdate", "-in", tmpcrl], stderr=subprocess.STDOUT)
+        ret = subprocess.check_output(["openssl", "crl", "-inform", inform, "-noout", "-nextupdate", "-in", tmpcrl], stderr=subprocess.STDOUT)
     except:
         os.remove(tmpcrl)
         # TODO check if UNKNOWN produces a Nagios notification, otherwise maybe a WARNING or CRITICAL would be better.
-        # TODO output more details as this error condition can happen too for things different than CRL parsing, e.g. openssl binary can't be found on Windows where /usr/bin/openssl won't exist.
+        # TODO output more details as this error condition can happen too for things different than CRL parsing, e.g. openssl binary can't be found on Windows where openssl won't exist.
         print ("UNKNOWN: CRL could not be parsed: %s" % url)
         sys.exit(3)
     finally:
