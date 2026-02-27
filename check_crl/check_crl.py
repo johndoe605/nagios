@@ -81,22 +81,13 @@ def check_crl(url, warn, crit, custom_dns_server):
         sys.exit(2)
 
     try:
-        # TODO confirm that the following logic allows for PEM and DER input.
-        inform = 'DER'
-        with open(tmpcrl, "rb") as crlfile:
-            firstbyte = crlfile.read()[0]
-            if firstbyte != 48: # First byte different than 0x30 (i.e. the start of DER SEQUENCE).
-                inform = 'PEM'
-        ret = subprocess.check_output(["openssl", "crl", "-inform", inform, "-noout", "-nextupdate", "-in", tmpcrl], stderr=subprocess.STDOUT)
+        ret = subprocess.check_output(["openssl", "crl", "-inform", "DER", "-noout", "-nextupdate", "-in", tmpcrl], stderr=subprocess.STDOUT)
     except:
         os.remove(tmpcrl)
         # TODO check if UNKNOWN produces a Nagios notification, otherwise maybe a WARNING or CRITICAL would be better.
         # TODO output more details as this error condition can happen too for things different than CRL parsing, e.g. openssl binary can't be found on Windows where openssl won't exist.
         print ("UNKNOWN: CRL could not be parsed: %s" % url)
         sys.exit(3)
-    finally:
-        # TODO should check if 'crlfile' is defined?.
-        crlfile.close()
 
     nextupdate = ret.strip().decode('utf-8').split("=")
     os.remove(tmpcrl)
