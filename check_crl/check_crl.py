@@ -48,7 +48,7 @@ import dns.resolver
 
 # TODO evaluate to log all errors to some sensitive location.
 
-def check_crl(url, warn, crit, custom_dns_server):
+def check_crl(url, warn, crit, custom_dns_server, issuer=None):
     # TODO ensure that temp files are always being deleted.
     tmpcrl = tempfile.mktemp(".crl")
     #request = urllib.request.urlretrieve(url, tmpcrl)
@@ -90,6 +90,19 @@ def check_crl(url, warn, crit, custom_dns_server):
         print ("UNKNOWN: CRL could not be parsed: %s" % url)
         sys.exit(3)
 
+    if issuer is not None:
+        try:
+            if not os.path.isfile(issuer):
+                print("CRITICAL: Issuer file not found: %s" % issuer)
+                sys.exit(2)
+
+            subprocess.check_call(["openssl", "crl", "-noout", "-inform", "DER", "-no-CAfile", "-no-CApath", "-CAfile", issuer, "-in", tmpcrl],
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            os.remove(tmpcrl)
+            print("CRITICAL: CRL signature verification failed with issuer: %s" % issuer)
+            sys.exit(2)
+
     nextupdate = ret.strip().decode('utf-8').split("=")
     issuer_dn = ret_issuer_dn.strip().decode('utf-8').split("=", 1)[1].strip()
     os.remove(tmpcrl)
@@ -123,7 +136,7 @@ def check_crl(url, warn, crit, custom_dns_server):
     print (msg)
     sys.exit(exitcode)
 
-def check_crl_with_overlap(url, overlap, dns_server):
+def check_crl_with_overlap(url, overlap, dns_server, issuer=None):
     # TODO research better on the 'skew' concept and check if EJBCA supports it for CRLs. Note that we are currently hardcoding a 20%.
     # TODO check: if EJBCA supports the skew, allow to receive it as an optional parameter with a sensitive default.
     # TODO check maybe the correct term here would be generation_tolerance_and_skew, because this time represents the skew (exists in EJBCA CRL generation?) and the time allowed for the CA to generate the CRL after the overlap starts, e.g. EJBCA service period which could be 5 minutes or so?. Maybe receive an additional optional tolerance parameter?. Consider the ClockSkewMinutes in AD CS, see https://confluence.blobfish.pe/x/-QK3B.
@@ -132,19 +145,21 @@ def check_crl_with_overlap(url, overlap, dns_server):
     skew = overlap * 20 / 100
     warn = overlap - skew
     crit = warn / 2
-    check_crl(url, warn, crit, dns_server)
+    check_crl(url, warn, crit, dns_server, issuer)
 
 def usage():
-    print ("check_crl.py -h|--help -v|--verbose -u|--url=<url> -o|--overlap -d|--dns-server=<dnsserver> -w|--warning=<minutes> -c|--critical=<minutes>")
+    print ("check_crl.py -h|--help -v|--verbose -u|--url=<url> -o|--overlap -d|--dns-server=<dnsserver> -w|--warning=<minutes> -c|--critical=<minutes> -i|--issuer=<issuer_pem_file>")
     print ("")
     print ("Example, if you want to get a warning if a CRL expires in 8 hours and a critical if it expires in 6 hours:")
     print ("./check_crl.py -u \"http://domain.tld/url/crl.crl\" -w 480 -c 360")
     print("If you want to monitor a CRL which is being renewed with an overlap of 10 minutes (see \"CRL Overlap Time\" in https://doc.primekey.com/ejbca6152/ejbca-operations/ejbca-concept-guide/certificate-authority-overview/ca-fields#CAFields-CRL_Period):")
     print("./check_crl.py -u \"http://domain.tld/url/crl.crl\" -o 10")
+    print("If you want to verify the CRL signature with an issuer certificate:")
+    print("./check_crl.py -u \"http://domain.tld/url/crl.crl\" -w 480 -c 360 -i /path/to/issuer.pem")
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hu:d:o:w:c:", ["help", "url=", "dns-server=", "overlap=", "warning=", "critical="])
+        opts, args = getopt.getopt(sys.argv[1:], "hu:d:o:w:c:i:", ["help", "url=", "dns-server=", "overlap=", "warning=", "critical=", "issuer="])
     except getopt.GetoptError as err:
         usage()
         sys.exit(2)
@@ -153,6 +168,7 @@ def main():
     warning = None
     critical = None
     overlap = None
+    issuer = None
     for o, a in opts:
         if o in ("-h", "--help"):
             usage()
@@ -167,12 +183,14 @@ def main():
             warning = a
         elif o in ("-c", "--critical"):
             critical = a
+        elif o in ("-i", "--issuer"):
+            issuer = a
         else:
             assert False, "unhandled option"
     if overlap != None:
-        check_crl_with_overlap(url, int(overlap), dns_server)
+        check_crl_with_overlap(url, int(overlap), dns_server, issuer)
     elif url != None and warning != None and critical != None:
-        check_crl(url, int(warning), int(critical), dns_server)
+        check_crl(url, int(warning), int(critical), dns_server, issuer)
     else:
         usage()
         sys.exit(2)
