@@ -82,6 +82,7 @@ def check_crl(url, warn, crit, custom_dns_server):
 
     try:
         ret = subprocess.check_output(["openssl", "crl", "-inform", "DER", "-noout", "-nextupdate", "-in", tmpcrl], stderr=subprocess.STDOUT)
+        ret_issuer_dn = subprocess.check_output(["openssl", "crl", "-inform", "DER", "-noout", "-issuer", "-in", tmpcrl], stderr=subprocess.STDOUT)
     except:
         os.remove(tmpcrl)
         # TODO check if UNKNOWN produces a Nagios notification, otherwise maybe a WARNING or CRITICAL would be better.
@@ -90,6 +91,7 @@ def check_crl(url, warn, crit, custom_dns_server):
         sys.exit(3)
 
     nextupdate = ret.strip().decode('utf-8').split("=")
+    issuer_dn = ret_issuer_dn.strip().decode('utf-8').split("=", 1)[1].strip()
     os.remove(tmpcrl)
     eol = time.mktime(time.strptime(nextupdate[1],"%b %d %H:%M:%S %Y GMT"))
     today = time.mktime(datetime.datetime.utcnow().timetuple())
@@ -106,16 +108,16 @@ def check_crl(url, warn, crit, custom_dns_server):
         unit = "days"
     gmtstr = time.asctime(time.localtime(eol))
     if minutes < 0:
-        msg = "CRITICAL CRL expired %d %s ago (on %s GMT)" % (-expires, unit, gmtstr)
+        msg = "CRITICAL CRL from %s expired %d %s ago (on %s GMT)" % (issuer_dn, -expires, unit, gmtstr)
         exitcode = 2
     elif minutes <= crit:
-        msg = "CRITICAL CRL expires in %d %s (on %s GMT)" % (expires, unit, gmtstr)
+        msg = "CRITICAL CRL from %s expires in %d %s (on %s GMT)" % (issuer_dn, expires, unit, gmtstr)
         exitcode = 2
     elif minutes <= warn:
-        msg = "WARNING CRL expires in %d %s (on %s GMT)" % (expires, unit, gmtstr)
+        msg = "WARNING CRL from %s expires in %d %s (on %s GMT)" % (issuer_dn, expires, unit, gmtstr)
         exitcode = 1
     else:
-        msg = "OK CRL expires in %d %s (on %s GMT)" % (expires, unit, gmtstr)
+        msg = "OK CRL from %s expires in %d %s (on %s GMT)" % (issuer_dn, expires, unit, gmtstr)
         exitcode = 0
 
     print (msg)
